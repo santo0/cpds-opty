@@ -19,7 +19,7 @@ stop(Store) ->
 lookup(I, Store) ->
     element(I, Store).
 
-%% Auxiliar function used by new/1 to build an initial list of entry
+%% Auxiliary function used by new/1 to build an initial list of entry
 %% processes. From N down to 0, it takes a list and prepends an
 %% entry:new(0) to it. This way, N entry processes are created in the list.
 entries(0, ListSoFar) ->
