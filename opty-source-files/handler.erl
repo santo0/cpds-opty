@@ -22,12 +22,13 @@ handler(Client, Validator, Store, Reads, Writes) ->
         {Ref, Entry, Value, Time} ->
             Client ! {value, Ref, Value}, %% TODO: not tested
             handler(Client, Validator, Store, [{Entry, Time}|Reads], Writes);
-        {write, N, Value} ->
-            %% TODO: ADD SOME CODE HERE AND COMPLETE NEXT LINE
-            Added = lists:keystore(N, 1, ..., {N, ..., ...}),
+        {write, N, Value} -> 
+            %% Begin: Added by Vincent %%
+            Entry = store:lookup(N, Store), %% TODO: not tested
+            Added = lists:keystore(N, 1, Writes, {N, Entry, Value}),
             handler(Client, Validator, Store, Reads, Added);
         {commit, Ref} ->
-            %% TODO: ADD SOME CODE
+            Validator !  {validate, Ref, Reads, Writes, Client}; %% TODO: not tested
         abort ->
             ok
     end.
