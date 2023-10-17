@@ -11,13 +11,13 @@ validator() ->
     receive
         {validate, Ref, Reads, Writes, Client} ->
             Tag = make_ref(),
-            send_read_checks(..., Tag),  %% TODO: COMPLETE
-            case check_reads(..., Tag) of  %% TODO: COMPLETE
+            send_read_checks(Reads, Tag),  %% TODO: not tested
+            case check_reads(length(Reads), Tag) of  %% TODO: not tested
                 ok ->
-                    update(...),  %% TODO: COMPLETE
+                    update(Writes),  %% TODO: not tested
                     Client ! {Ref, ok};
                 abort ->
-                    %% TODO: ADD SOME CODE
+                    Client ! {Ref, abort} %% TODO: not tested
             end,
             validator();
         stop ->
