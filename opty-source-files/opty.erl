@@ -8,7 +8,9 @@
 %% Time: Duration of the experiment (in secs)
 
 startDistributed(Clients, Entries, Reads, Writes, Time, ServerRef) ->
-    spawn(ServerRef, fun() -> register(s, server:start(Entries)) end),
+    Main = self(),
+    spawn(ServerRef, fun() -> register(s, server:start(Entries)), Main ! registerFinished end),
+    receive registerFinished -> io:format("Server started~n", []) end,
     L = startClientsDistributed(Clients, [], Entries, Reads, Writes, ServerRef),
     io:format("Starting: ~w CLIENTS, ~w ENTRIES, ~w RDxTR, ~w WRxTR, DURATION ~w s~n", 
          [Clients, Entries, Reads, Writes, Time]),
