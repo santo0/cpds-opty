@@ -1,5 +1,5 @@
 -module(server).
--export([start/1]).
+-export([start/1, init/1]).
 
 start(N) ->
     spawn(fun() -> init(N) end).

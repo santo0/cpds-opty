@@ -8,26 +8,24 @@
 %% Time: Duration of the experiment (in secs)
 
 startDistributed(Clients, Entries, Reads, Writes, Time, ServerRef) ->
-    Main = self(),
-    spawn(ServerRef, fun() -> register(s, server:start(Entries)), Main ! registerFinished end),
-    receive registerFinished -> io:format("Server started~n", []) end,
-    L = startClientsDistributed(Clients, [], Entries, Reads, Writes, ServerRef),
+    ServerPID = spawn(ServerRef, fun() -> server:init(Entries) end),
+    L = startClientsDistributed(Clients, [], Entries, Reads, Writes, ServerPID),
     io:format("Starting: ~w CLIENTS, ~w ENTRIES, ~w RDxTR, ~w WRxTR, DURATION ~w s~n", 
          [Clients, Entries, Reads, Writes, Time]),
     timer:sleep(Time*1000),
-    stopDistributed(L, ServerRef).
+    stopDistributed(L, ServerPID).
 
-stopDistributed(L, ServerRef) ->
+stopDistributed(L, ServerPID) ->
     io:format("Stopping...~n"),
     stopClients(L),
     waitClients(L),
-    {s, ServerRef} ! stop,
+    ServerPID ! stop,
     io:format("Stopped~n").
 
 startClientsDistributed(0, L, _, _, _, _) -> L;
-startClientsDistributed(Clients, L, Entries, Reads, Writes, ServerRef) ->
-    Pid = client:start(Clients, Entries, Reads, Writes, {s, ServerRef}),
-    startClientsDistributed(Clients-1, [Pid|L], Entries, Reads, Writes, ServerRef).
+startClientsDistributed(Clients, L, Entries, Reads, Writes, ServerPID) ->
+    Pid = client:start(Clients, Entries, Reads, Writes, ServerPID),
+    startClientsDistributed(Clients-1, [Pid|L], Entries, Reads, Writes, ServerPID).
 
 
 
