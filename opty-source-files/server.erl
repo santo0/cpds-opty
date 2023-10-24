@@ -10,9 +10,10 @@ init(N) ->
     server(Validator, Store).
 
 server(Validator, Store) ->
-    receive 
+    receive
         {open, Client} ->
-            Client ! {transaction, Validator, Store},    %% TODO: not tested
+            %% TODO: not tested
+            Client ! {transaction, Validator, Store},
             server(Validator, Store);
         stop ->
             Validator ! stop,

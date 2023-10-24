@@ -14,27 +14,27 @@ init(Value) ->
 
 entry(Value, Time) ->
     receive
-    	%% If it is a "read" command, send back the internal state
+        %% If it is a "read" command, send back the internal state
         {read, Ref, From} ->
-            From ! {Ref, self(), Value, Time}, % TODO - not tested
+            % TODO - not tested
+            From ! {Ref, self(), Value, Time},
             entry(Value, Time);
-
-	%% If it is a "write" command, "New" becomes the new "Value"
+        %% If it is a "write" command, "New" becomes the new "Value"
         {write, New} ->
-            entry(New, make_ref()); % TODO - not tested
-
-	%% For validation purposes, a "check" command returns
-	%% whether the entry has changed from Readtime to Time
+            % TODO - not tested
+            entry(New, make_ref());
+        %% For validation purposes, a "check" command returns
+        %% whether the entry has changed from Readtime to Time
         {check, Ref, Readtime, From} ->
             if
-                 Readtime == Time ->
-                    From ! {Ref, ok}; %% TODO: not tested
+                Readtime == Time ->
+                    %% TODO: not tested
+                    From ! {Ref, ok};
                 true ->
                     From ! {Ref, abort}
             end,
             entry(Value, Time);
-
-	%% If a "stop" command is issued, then **return** ok (instead of
+        %% If a "stop" command is issued, then **return** ok (instead of
         %% sending a message), and don't do the recursive call,
         %% causing termination
         stop ->

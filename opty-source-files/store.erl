@@ -10,10 +10,12 @@ new(N) ->
 
 %% Send the stop signal to all the entry processes.
 stop(Store) ->
-    lists:foreach(fun(E) -> 
-                    E ! stop 
-                  end, 
-                  tuple_to_list(Store)).
+    lists:foreach(
+        fun(E) ->
+            E ! stop
+        end,
+        tuple_to_list(Store)
+    ).
 
 %% Retrieve the Ith entry process (element is a BIF, and it is 1-indexed).
 lookup(I, Store) ->
@@ -26,4 +28,4 @@ entries(0, ListSoFar) ->
     ListSoFar;
 entries(N, ListSoFar) ->
     Entry = entry:new(0),
-    entries(N-1, [Entry|ListSoFar]).
+    entries(N - 1, [Entry | ListSoFar]).
