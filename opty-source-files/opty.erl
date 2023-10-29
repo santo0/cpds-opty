@@ -7,7 +7,15 @@
 %% Writes: Number of write operations per transaction
 %% Time: Duration of the experiment (in secs)
 
-start(Clients, Entries, Reads, Writes, Time) ->
+start(Clients, Entries, Reads, Writes, Time, ExecNumber) ->
+    CSVFile = io_lib:format(
+        "clients~w.entries~w.reads~w.writes~w.time~w.exec~w.csv",
+        [Clients, Entries, Reads, Writes, Time, ExecNumber]),
+
+    file:write_file(CSVFile,
+            "ClientID, Entries, Reads, Writes, Time, ExecNumber\n"
+    ),
+
     register(s, server:start(Entries)),
     L = startClients(Clients, [], Entries, Reads, Writes),
     io:format(
@@ -15,11 +23,11 @@ start(Clients, Entries, Reads, Writes, Time) ->
         [Clients, Entries, Reads, Writes, Time]
     ),
     timer:sleep(Time * 1000),
-    stop(L).
+    stop(L, CSVFile).
 
 stop(L) ->
     io:format("Stopping...~n"),
-    stopClients(L),
+    stopClients(L, CSVFile),
     waitClients(L),
     s ! stop,
     io:format("Stopped~n").
@@ -30,11 +38,11 @@ startClients(Clients, L, Entries, Reads, Writes) ->
     Pid = client:start(Clients, Entries, Reads, Writes, s),
     startClients(Clients - 1, [Pid | L], Entries, Reads, Writes).
 
-stopClients([]) ->
+stopClients([], _) ->
     ok;
-stopClients([Pid | L]) ->
-    Pid ! {stop, self()},
-    stopClients(L).
+stopClients([Pid | L], CSVFile) ->
+    Pid ! {stop, self(), CSVFile},
+    stopClients(L, CSVFile).
 
 waitClients([]) ->
     ok;

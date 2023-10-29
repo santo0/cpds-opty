@@ -34,7 +34,7 @@ update(Writes) ->
     lists:foreach(
         fun({_, Entry, Value}) ->
             %% TODO: not tested
-            Entry ! Value
+            Entry ! {write, Value}
         end,
         Writes
     ).

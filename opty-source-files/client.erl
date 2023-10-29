@@ -7,11 +7,16 @@ start(ClientID, Entries, Reads, Writes, Server) ->
 open(ClientID, Entries, Reads, Writes, Server, Total, Ok) ->
     Server ! {open, self()},
     receive
-        {stop, From} ->
+        {stop, From, CSVFile} ->
             io:format(
                 "~w: Transactions TOTAL:~w, OK:~w, -> ~w % ~n",
                 [ClientID, Total, Ok, 100 * Ok / Total]
             ),
+            file:write_file(CSVFile,
+                io_lib:fwrite(
+                    "~w,~w,~w,~w,~w,~w\n",
+                    [ClientID, Entries, Reads, Writes, Time, ExecNumber])
+                ),
             From ! {done, self()},
             ok;
         {transaction, Validator, Store} ->
