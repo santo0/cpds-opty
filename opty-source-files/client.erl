@@ -45,14 +45,14 @@ do_transaction(ClientID, Entries, Reads, Writes, Handler) ->
 
 do_read(Entries, Handler) ->
     Ref = make_ref(),
-    Num = rand:uniform(Entries),
+    Num = lists:nth(rand:uniform(length(Entries)), Entries),
     Handler ! {read, Ref, Num},
     receive
         {value, Ref, Value} -> Value
     end.
 
 do_write(Entries, Handler, Value) ->
-    Num = rand:uniform(Entries),
+    Num = lists:nth(rand:uniform(length(Entries)), Entries),
     Handler ! {write, Num, Value}.
 
 do_commit(Handler) ->
