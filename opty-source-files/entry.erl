@@ -1,42 +1,46 @@
 -module(entry).
 -export([new/1]).
 
-%% An entry is an Erlang process that waits for _reading_ or
-%% _writing_ messages, and returns its internal state or
-%% updates it accordingly.
-
-%% Initialization of an entry.
 new(Value) ->
     spawn_link(fun() -> init(Value) end).
 
 init(Value) ->
-    entry(Value, make_ref()).
+    entry(Value, [], 0).
 
-entry(Value, Time) ->
+entry(Value, ActiveReads, WriteCount) ->
     receive
-        %% If it is a "read" command, send back the internal state
-        {read, Ref, From} ->
-            % TODO - not tested
-            From ! {Ref, self(), Value, Time},
-            entry(Value, Time);
-        %% If it is a "write" command, "New" becomes the new "Value"
-        {write, New} ->
-            % TODO - not tested
-            entry(New, make_ref());
-        %% For validation purposes, a "check" command returns
-        %% whether the entry has changed from Readtime to Time
-        {check, Ref, Readtime, From} ->
-            if
-                Readtime == Time ->
-                    %% TODO: not tested
-                    From ! {Ref, ok};
+        {read, Ref, From, TransactionId} when WriteCount == 0 ->
+            From ! {from_entry, Ref, self(), Value},
+            % Avoid duped TransactionId in ActiveReads
+            case lists:member(TransactionId, ActiveReads) of
                 true ->
-                    From ! {Ref, abort}
+                    entry(Value, ActiveReads, WriteCount);
+                false ->
+                    entry(Value, [TransactionId | ActiveReads], WriteCount)
+            end;
+        {stop_reading, Ref, From, TransactionId} ->
+            From ! {Ref, stopped},
+            entry(Value, lists:delete(TransactionId, ActiveReads), WriteCount);
+        {check, Ref, From, TransactionId} ->
+            case check_conflict(ActiveReads) of
+                true ->
+                    From ! {Ref, abort};
+                false ->
+                    From ! {Ref, ok}
             end,
-            entry(Value, Time);
-        %% If a "stop" command is issued, then **return** ok (instead of
-        %% sending a message), and don't do the recursive call,
-        %% causing termination
+            entry(Value, lists:delete(TransactionId, ActiveReads), WriteCount + 1);
+        {write, New} ->
+            entry(New, ActiveReads, WriteCount - 1);
+        unblock ->
+            entry(Value, ActiveReads, WriteCount - 1);
         stop ->
             ok
+    end.
+%%Return True if conflict, False otherwise
+check_conflict(ActiveReads) ->
+    case ActiveReads of
+        % No Active Reads, no conflict
+        [] -> false;
+        % Ther are Active Reads that are from other Transactions, There is conflict!
+        _ -> true
     end.

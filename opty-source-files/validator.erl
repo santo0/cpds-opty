@@ -9,18 +9,18 @@ init() ->
 
 validator() ->
     receive
-        {validate, Ref, Reads, Writes, Client} ->
+        %% Removed Reads, no necesary
+        {validate, Ref, Reads, Writes, Client, TransactionId} ->
             Tag = make_ref(),
-            %% TODO: not tested
-            send_read_checks(Reads, Tag),
-            %% TODO: not tested
-            case check_reads(length(Reads), Tag) of
+            send_stop_reading(Reads, Tag, TransactionId),
+            wait_stop_reading(length(Reads), Tag),
+            send_check_conflict(Writes, Tag, TransactionId),
+            case check_writes(length(Writes), Tag) of
                 ok ->
-                    %% TODO: not tested
                     update(Writes),
                     Client ! {Ref, ok};
                 abort ->
-                    %% TODO: not tested - I have the feeling more lines are necessary, but not sure.
+                    abort_entries_writes(Writes),
                     Client ! {Ref, abort}
             end,
             validator();
@@ -33,28 +33,50 @@ validator() ->
 update(Writes) ->
     lists:foreach(
         fun({_, Entry, Value}) ->
-            %% TODO: not tested
             Entry ! {write, Value}
         end,
         Writes
     ).
 
-send_read_checks(Reads, Tag) ->
+abort_entries_writes(Writes) ->
+    lists:foreach(
+        fun({_, Entry, _}) ->
+            Entry ! unblock
+        end,
+        Writes
+    ).
+
+wait_stop_reading(0, _) ->
+    ok;
+wait_stop_reading(N, Tag) ->
+    receive
+        {Tag, stopped} ->
+            wait_stop_reading(N - 1, Tag)
+    end.
+
+send_stop_reading(Reads, Tag, TransactionId) ->
     Self = self(),
     lists:foreach(
-        fun({Entry, Time}) ->
-            %% TODO: not tested
-            Entry ! {check, Tag, Time, Self}
+        fun(Entry) ->
+            Entry ! {stop_reading, Tag, Self, TransactionId}
         end,
         Reads
     ).
+send_check_conflict(Writes, Tag, TransactionId) ->
+    Self = self(),
+    lists:foreach(
+        fun({_, Entry, _}) ->
+            Entry ! {check, Tag, Self, TransactionId}
+        end,
+        Writes
+    ).
 
-check_reads(0, _) ->
+check_writes(0, _) ->
     ok;
-check_reads(N, Tag) ->
+check_writes(N, Tag) ->
     receive
         {Tag, ok} ->
-            check_reads(N - 1, Tag);
+            check_writes(N - 1, Tag);
         {Tag, abort} ->
             abort
     end.
