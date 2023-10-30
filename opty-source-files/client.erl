@@ -1,26 +1,35 @@
 -module(client).
--export([start/5]).
+-export([start/6]).
 
-start(ClientID, Entries, Reads, Writes, Server) ->
-    spawn(fun() -> open(ClientID, Entries, Reads, Writes, Server, 0, 0) end).
+start(ClientID, Entries, Reads, Writes, Server, CSVFile) ->
+    file:write_file(CSVFile, "\n"),
+    spawn(fun() -> open(ClientID, Entries, Reads, Writes, Server, 0, 0, CSVFile) end).
 
-open(ClientID, Entries, Reads, Writes, Server, Total, Ok) ->
+open(ClientID, Entries, Reads, Writes, Server, Total, Ok, CSVFile) ->
     Server ! {open, self()},
     receive
         {stop, From} ->
+            Percentage = 100 * Ok / Total,
             io:format(
-                "~w: Transactions TOTAL:~w, OK:~w, -> ~w % ~n",
-                [ClientID, Total, Ok, 100 * Ok / Total]
+                "~w: Transactions PERCENTAGE:  ~w   TOTAL:~w, OK:~w, -> ~w   % ~n",
+                [ClientID, Percentage, Total, Ok, Percentage]
             ),
+            file:write_file(CSVFile,
+                io_lib:fwrite(
+                    "~w,",
+                    [Percentage]),
+                    [append]
+            ),
+    
             From ! {done, self(), Total, Ok, 100 * Ok / Total},
             ok;
         {transaction, Validator, Store} ->
             Handler = handler:start(self(), Validator, Store),
             case do_transaction(ClientID, Entries, Reads, Writes, Handler) of
                 ok ->
-                    open(ClientID, Entries, Reads, Writes, Server, Total + 1, Ok + 1);
+                    open(ClientID, Entries, Reads, Writes, Server, Total + 1, Ok + 1, CSVFile);
                 abort ->
-                    open(ClientID, Entries, Reads, Writes, Server, Total + 1, Ok)
+                    open(ClientID, Entries, Reads, Writes, Server, Total + 1, Ok, CSVFile)
             end
     end.
 

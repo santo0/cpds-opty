@@ -7,7 +7,6 @@
 %% Reads: Number of read operations per transaction
 %% Writes: Number of write operations per transaction
 %% Time: Duration of the experiment (in secs)
-%% ExecId: id of this execution.
 
 start(Clients, Entries, EntriesPerClient, Reads, Writes, Time) ->
     CSVFile = io_lib:format(
@@ -19,7 +18,7 @@ start(Clients, Entries, EntriesPerClient, Reads, Writes, Time) ->
     %),
 
     register(s, server:start(Entries)),
-    L = startClients(Clients, [], Entries, EntriesPerClient, Reads, Writes),
+    L = startClients(Clients, [], Entries, EntriesPerClient, Reads, Writes, CSVFile),
     io:format(
         "Starting: ~w CLIENTS, ~w ENTRIES, ~w EntriesPerClient, ~w RDxTR, ~w WRxTR, DURATION ~w s~n",
         [Clients, Entries, EntriesPerClient, Reads, Writes, Time]
@@ -35,12 +34,12 @@ stop(L, CSVFile) ->
     io:format("Stopped~n"),
     erlang:halt().
 
-startClients(0, L, _, _, _, _) ->
+startClients(0, L, _, _, _, _, _) ->
     L;
-startClients(Clients, L, Entries, EntriesPerClient, Reads, Writes) ->
+startClients(Clients, L, Entries, EntriesPerClient, Reads, Writes, CSVFile) ->
     RandomClientEntries = lists:sublist([X || {_ , X} <- lists:sort([{rand:uniform(), E} || E <- lists:seq(1, Entries)])], EntriesPerClient),
-    Pid = client:start(Clients, RandomClientEntries, Reads, Writes, s),
-    startClients(Clients - 1, [Pid | L], Entries, EntriesPerClient, Reads, Writes).
+    Pid = client:start(Clients, RandomClientEntries, Reads, Writes, s, CSVFile),
+    startClients(Clients - 1, [Pid | L], Entries, EntriesPerClient, Reads, Writes, CSVFile).
 
 stopClients([]) ->
     ok;
@@ -51,7 +50,7 @@ stopClients([Pid | L]) ->
 waitClients([], Total, OK, Percentage, NumClients, CSVFile) ->
     file:write_file(CSVFile,
         io_lib:fwrite(
-            "~w,~w,~w\n",
+            "\n\n~w,~w,~w\n",
             [Total/NumClients, OK/NumClients, Percentage/NumClients]),
             [append]
     ),
